@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { analyzeSentiment } from './src/services/sentimentService.js';
+import reviewsRouter from './src/modules/reviews/reviews.routes.js';
 
 
 const app = express();
@@ -38,6 +39,10 @@ app.post("/teste/sentiment", async (req, res) => {
   }
 
 });
+
+// API de reviews
+app.use("/api/reviews", reviewsRouter);
+
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");
