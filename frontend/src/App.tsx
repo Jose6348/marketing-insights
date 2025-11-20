@@ -1,12 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { fetchReviews } from "./api";
-import type { ReviewsResponse } from "./api";
+import { fetchReviews, createReview } from "./api";
+import type { ReviewsResponse, CreateReviewRequest } from "./api";
 
 
 const App: React.FC = () => {
   const [data, setData] = useState<ReviewsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Estados do formulário
+  const [formData, setFormData] = useState<CreateReviewRequest>({
+    productName: "",
+    source: "",
+    rating: null,
+    text: "",
+  });
+  const [formErrors, setFormErrors] = useState<{
+    productName?: string;
+    text?: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Carrega reviews do backend assim que o app monta
   useEffect(() => {
@@ -37,7 +52,7 @@ const App: React.FC = () => {
   const metrics = data?.metrics;
 
   const totalReviews = metrics?.totalReviews ?? 0;
-  const avgRating = metrics?.avgRating ?? null;
+  const avgSentimentScore = metrics?.avgSentimentScore ?? null;
 
   const totalSentiment = metrics?.sentimentSummary.total ?? 0;
   const positiveCount = metrics?.sentimentSummary.positive ?? 0;
@@ -78,6 +93,98 @@ const App: React.FC = () => {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 10)
     : [];
+
+  // Função para validar o formulário
+  const validateForm = (): boolean => {
+    const errors: { productName?: string; text?: string } = {};
+
+    if (!formData.productName.trim()) {
+      errors.productName = "Nome do produto é obrigatório";
+    }
+
+    if (!formData.text.trim()) {
+      errors.text = "Texto da review é obrigatório";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handler para mudanças nos campos do formulário
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Limpa erro do campo quando o usuário começa a digitar
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: undefined,
+      }));
+    }
+    // Limpa mensagens de sucesso/erro anteriores
+    setSubmitSuccess(null);
+    setSubmitError(null);
+  };
+
+  // Handler para submit do formulário
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Limpa mensagens anteriores
+    setSubmitSuccess(null);
+    setSubmitError(null);
+
+    // Valida o formulário
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Cria a review no backend
+      await createReview({
+        productName: formData.productName.trim(),
+        source: formData.source?.trim() || undefined,
+        rating: formData.rating || null,
+        text: formData.text.trim(),
+      });
+
+      // Limpa o formulário
+      setFormData({
+        productName: "",
+        source: "",
+        rating: null,
+        text: "",
+      });
+
+      // Mostra mensagem de sucesso
+      setSubmitSuccess("Review criada com sucesso! Atualizando dados...");
+
+      // Recarrega as reviews e métricas
+      const response = await fetchReviews();
+      setData(response);
+
+      // Limpa mensagem de sucesso após 3 segundos
+      setTimeout(() => {
+        setSubmitSuccess(null);
+      }, 3000);
+    } catch (err) {
+      console.error("[App] Erro ao criar review:", err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erro inesperado ao criar review.";
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="app-root">
@@ -121,11 +228,21 @@ const App: React.FC = () => {
           </div>
 
           <div className="card">
-            <h2>Nota média</h2>
+            <h2>Score médio de sentimento</h2>
             <p className="metric-number">
-              {avgRating !== null ? avgRating.toFixed(1) : "-"}
+              {avgSentimentScore !== null
+                ? avgSentimentScore.toFixed(2)
+                : "-"}
             </p>
-            <p className="metric-caption">Escala de 1 a 5</p>
+            <p className="metric-caption">
+              {avgSentimentScore !== null
+                ? avgSentimentScore > 0.5
+                  ? "Predominantemente positivo"
+                  : avgSentimentScore < -0.5
+                  ? "Predominantemente negativo"
+                  : "Predominantemente neutro"
+                : "Aguardando reviews"}
+            </p>
           </div>
 
           <div className="card">
@@ -171,21 +288,56 @@ const App: React.FC = () => {
           </div>
 
           <div className="card form-card">
-            <h2>Adicionar review (placeholder)</h2>
+            <h2>Adicionar review</h2>
             <p className="metric-caption">
-              Aqui depois vamos integrar com o backend para salvar e analisar a
-              review em tempo real.
+              Preencha os campos abaixo para adicionar uma nova review. O sistema
+              analisará automaticamente o sentimento do texto.
             </p>
-            <form className="review-form">
-              <input placeholder="Nome do produto" disabled />
-              <input placeholder="Fonte (Amazon, Loja, etc.)" disabled />
-              <textarea
-                placeholder="Texto da review"
-                rows={4}
-                disabled
-              ></textarea>
-              <button type="button" disabled>
-                Em breve: enviar para análise de sentimento
+            <form className="review-form" onSubmit={handleSubmit}>
+              <div>
+                <input
+                  name="productName"
+                  placeholder="Nome do produto *"
+                  value={formData.productName}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                />
+                {formErrors.productName && (
+                  <span className="form-error">{formErrors.productName}</span>
+                )}
+              </div>
+              <div>
+                <input
+                  name="source"
+                  placeholder="Fonte (Amazon, Loja, etc.)"
+                  value={formData.source}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div>
+                <textarea
+                  name="text"
+                  placeholder="Texto da review *"
+                  rows={4}
+                  value={formData.text}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                ></textarea>
+                {formErrors.text && (
+                  <span className="form-error">{formErrors.text}</span>
+                )}
+              </div>
+              {submitSuccess && (
+                <div className="form-success">{submitSuccess}</div>
+              )}
+              {submitError && (
+                <div className="form-error-message">{submitError}</div>
+              )}
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Enviando..."
+                  : "Enviar para análise de sentimento"}
               </button>
             </form>
           </div>

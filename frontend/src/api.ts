@@ -14,7 +14,7 @@ export type SentimentSummary = {
 
 export type Metrics = {
   totalReviews: number;
-  avgRating: number | null;
+  avgSentimentScore: number | null;
   sentimentSummary: SentimentSummary;
 };
 
@@ -50,5 +50,36 @@ export async function fetchReviews(product?: string): Promise<ReviewsResponse> {
   }
 
   const data = (await res.json()) as ReviewsResponse;
+  return data;
+}
+
+// Tipo para criar uma nova review
+export type CreateReviewRequest = {
+  productName: string;
+  source?: string;
+  rating?: number | null;
+  text: string;
+};
+
+// Cria uma nova review no backend
+export async function createReview(
+  review: CreateReviewRequest
+): Promise<Review> {
+  const res = await fetch(`${API_BASE_URL}/api/reviews`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(review),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `Erro ao criar review (${res.status} ${res.statusText})`
+    );
+  }
+
+  const data = (await res.json()) as Review;
   return data;
 }
