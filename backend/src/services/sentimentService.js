@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const SENTIMENT_API_URL = 'http://localhost:8000'; // Replace with actual API URL
+const SENTIMENT_API_URL = process.env.SENTIMENT_API_URL || 'http://localhost:8000';
+const SENTIMENT_API_TIMEOUT = parseInt(process.env.SENTIMENT_API_TIMEOUT || '5000', 10);
 
-// Serviço que se comunica com a API
 export async function analyzeSentiment(text) {
   if (!text || typeof text !== 'string') {
     throw new Error('texto inválido fornecido para análise de sentimento');
@@ -10,7 +10,7 @@ export async function analyzeSentiment(text) {
   try {
     const response = await axios.post(`${SENTIMENT_API_URL}/sentiment`, { text },
       {
-        timeout: 5000, // 5 segundos de timeout
+        timeout: SENTIMENT_API_TIMEOUT,
       }
     )
 

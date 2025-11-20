@@ -184,8 +184,62 @@ html,
   font-weight: 500;
   background: linear-gradient(135deg, #22c55e, #22d3ee);
   color: #020617;
-  cursor: not-allowed; /* por enquanto é placeholder */
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.review-form button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.review-form button:disabled {
+  cursor: not-allowed;
   opacity: 0.6;
+}
+
+.review-form input:disabled,
+.review-form textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.review-form input:focus,
+.review-form textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.review-form > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-error {
+  font-size: 0.75rem;
+  color: #f97316;
+  margin-top: -0.2rem;
+}
+
+.form-success {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background-color: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.form-error-message {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f97316;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
 }
 
 @media (max-width: 900px) {

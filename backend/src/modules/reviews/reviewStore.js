@@ -1,7 +1,3 @@
-// "Banco de dados" em memória só para o MVP.
-// Se eu quiser evoluir depois para Prisma/SQLite/Postgres, eu troco a implementação
-// mantendo a mesma interface.
-
 let reviews = [];
 let nextId = 1;
 
@@ -52,15 +48,16 @@ export function listReviews({ product } = {}) {
 export function calculateMetrics(reviewsList) {
   const totalReviews = reviewsList.length;
 
-  let avgRating = null;
+  // Calcula score médio de sentimento (mais útil que rating)
+  let avgSentimentScore = null;
   if (totalReviews > 0) {
-    const ratings = reviewsList
-      .map((r) => r.rating)
-      .filter((r) => typeof r === "number");
+    const scores = reviewsList
+      .map((r) => r.sentimentScore)
+      .filter((s) => typeof s === "number" && !isNaN(s));
 
-    if (ratings.length > 0) {
-      const sum = ratings.reduce((acc, curr) => acc + curr, 0);
-      avgRating = sum / ratings.length;
+    if (scores.length > 0) {
+      const sum = scores.reduce((acc, curr) => acc + curr, 0);
+      avgSentimentScore = sum / scores.length;
     }
   }
 
@@ -79,14 +76,11 @@ export function calculateMetrics(reviewsList) {
 
   return {
     totalReviews,
-    avgRating,
+    avgSentimentScore,
     sentimentSummary,
   };
 }
 
-/**
- * Só pra facilitar debug/teste se eu quiser limpar tudo.
- */
 export function resetReviews() {
   reviews = [];
   nextId = 1;
