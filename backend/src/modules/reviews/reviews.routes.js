@@ -12,16 +12,21 @@ const router = Router();
  * GET /api/reviews
  * Query opcional: ?product=NomeDoProduto
  */
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const { product } = req.query;
 
-  const reviews = listReviews({ product });
-  const metrics = calculateMetrics(reviews);
+  try {
+    const reviews = await listReviews({ product });
+    const metrics = calculateMetrics(reviews);
 
-  return res.json({
-    reviews,
-    metrics,
-  });
+    return res.json({
+      reviews,
+      metrics,
+    });
+  } catch (error) {
+    console.error("[reviews.routes] Erro ao listar reviews:", error.message);
+    return res.status(500).json({ error: "Erro interno ao listar reviews." });
+  }
 });
 
 /**
@@ -40,13 +45,13 @@ router.post("/", async (req, res) => {
   if (!productName || !text) {
     return res
       .status(400)
-      .json({ error: "productName e text são obrigatórios." });
+      .json({ error: "productName e text sao obrigatorios." });
   }
 
   try {
     const sentiment = await analyzeSentiment(text);
 
-    const review = createReview({
+    const review = await createReview({
       productName,
       source,
       rating,

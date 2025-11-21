@@ -45,19 +45,19 @@ def health():
 @app.post("/sentiment", response_model=SentimentResponse)
 def sentiment(req: SentimentRequest):
     text = req.text.strip()
-    
+
     if not text:
         raise HTTPException(status_code=400, detail="Texto não pode estar vazio")
-    
+
     if not GEMINI_API_KEY:
         raise HTTPException(
             status_code=500,
             detail="GEMINI_API_KEY não configurada. Configure a variável de ambiente."
         )
-    
+
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
-        
+
         prompt = f"""Você é um especialista em análise de sentimento de reviews de produtos em português.
 
 Analise o sentimento do seguinte texto de review:
@@ -90,36 +90,36 @@ Apenas o JSON, nada mais."""
 
         response = model.generate_content(prompt)
         response_text = response.text.strip()
-        
+
         print(f"[DEBUG] Resposta bruta do Gemini: {response_text[:200]}")
-        
+
         if response_text.startswith("```"):
             response_text = response_text.split("```")[1]
             if response_text.startswith("json"):
                 response_text = response_text[4:]
             response_text = response_text.strip()
-        
+
         try:
             result = json.loads(response_text)
             label = result.get("label", "neutral").lower()
             score = float(result.get("score", 0.0))
-            
+
             print(f"[DEBUG] Label do Gemini: {label}, Score original: {score}")
-            
+
             if label not in ["positive", "negative", "neutral"]:
                 label = "neutral"
-            
+
             # Normaliza score de -1.0 a 1.0 para 0.0 a 1.0
             normalized_score = (score + 1.0) / 2.0
             normalized_score = max(0.0, min(1.0, normalized_score))
-            
+
             return SentimentResponse(label=label, score=normalized_score)
-            
+
         except json.JSONDecodeError as e:
             print(f"Erro ao fazer parse do JSON do Gemini: {e}")
             print(f"Resposta recebida: {response_text}")
             return _fallback_sentiment_analysis(text)
-            
+
     except Exception as e:
         print(f"Erro ao chamar Gemini API: {e}")
         return _fallback_sentiment_analysis(text)
@@ -128,13 +128,13 @@ Apenas o JSON, nada mais."""
 def _fallback_sentiment_analysis(text: str) -> SentimentResponse:
     """Análise básica por palavras-chave quando o Gemini falha."""
     text_lower = text.lower()
-    
+
     positive_indicators = ["bom", "ótimo", "excelente", "gostei", "recomendo", "perfeito", "adoro"]
     negative_indicators = ["ruim", "péssimo", "horrível", "odiei", "não gostei", "defeito", "quebrado"]
-    
+
     positive_count = sum(1 for word in positive_indicators if word in text_lower)
     negative_count = sum(1 for word in negative_indicators if word in text_lower)
-    
+
     if positive_count > negative_count:
         score = 0.7
         label = "positive"
@@ -144,6 +144,6 @@ def _fallback_sentiment_analysis(text: str) -> SentimentResponse:
     else:
         score = 0.5
         label = "neutral"
-    
+
     return SentimentResponse(label=label, score=score)
 
